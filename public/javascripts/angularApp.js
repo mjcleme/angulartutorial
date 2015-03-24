@@ -20,7 +20,8 @@ function($stateProvider, $urlRouterProvider) {
 }])
 .factory('postFactory', ['$http', function($http){
   var o = {
-    posts: []
+    posts: [],
+    post: {}
   };
   o.getAll = function() {
     return $http.get('/posts').success(function(data){
@@ -40,6 +41,22 @@ function($stateProvider, $urlRouterProvider) {
     return $http.put('/posts/' + post._id + '/upvote')
       .success(function(data){
         post.upvotes += 1;
+      });
+  };
+  o.getPost = function(id) {
+    return $http.get('/posts/' + id).success(function(data){
+      console.log("get");
+      console.log(data);
+      angular.copy(data, o.post);
+    });
+  };
+  o.addNewComment = function(id, comment) {
+    return $http.post('/posts/' + id + '/comments', comment);
+  };
+  o.upvoteComment = function(selPost, comment) {
+    return $http.put('/posts/' + selPost._id + '/comments/'+ comment._id + '/upvote')
+      .success(function(data){
+        comment.upvotes += 1;
       });
   };
   return o;
@@ -73,18 +90,29 @@ function($scope, postFactory){
 '$stateParams',
 'postFactory',
 function($scope, $stateParams, postFactory){
-  $scope.post = postFactory.posts[$stateParams.id];
+//  $scope.post = postFactory.posts[$stateParams.id];
+  var mypost = postFactory.posts[$stateParams.id];
+  console.log("PostsCtrl: "+$stateParams.id);
+  console.log(mypost);
+  postFactory.getPost(mypost._id);
+  $scope.post = postFactory.post;
 
+  $scope.incrementUpvotes = function(comment){
+    console.log("incrementUp "+postFactory.post._id+" comment "+comment._id);
+    postFactory.upvoteComment(postFactory.post, comment);
+  };
   $scope.addComment = function(){
     if($scope.body === '') { return; }
-    $scope.post.comments.push({
-      body: $scope.body,
-      upvotes: 0
+    console.log("addComment ",postFactory.post._id);
+    postFactory.addNewComment(postFactory.post._id, {
+      body:$scope.body
+    }).success(function(comment) {
+      console.log("addComment success");
+      console.log("comment");
+      mypost.comments.push(comment);
+      postFactory.post.comments.push(comment);
     });
     $scope.body = '';
   };
 
-  $scope.incrementUpvotes = function(comment){
-    comment.upvotes += 1;
-  };
 }]);
